@@ -10,6 +10,7 @@ using Infrastructure.Entities.Enum;
 using Infrastructure.Model.User;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using MRApiCommon.Infrastructure.IdentityExtensions.Components;
 using MRIdentityClient.Email;
 using MRIdentityClient.Email.User;
 using MRIdentityClient.Exception.Common;
@@ -41,7 +42,7 @@ namespace Manager
             if (user == null)
                 throw new EntityNotFoundException(id, typeof(AppUser));
 
-            return user.Roles.Select(x => x.RoleName).ToList();
+            return user.Roles.Select(x => x.Name).ToList();
         }
 
         #region admin
@@ -60,12 +61,11 @@ namespace Manager
                 FirstName = model.FirstName,
                 LastName = model.LastName,
                 Email = model.Email,
-                Tels = model.Tels?.Select((x) => new MRDbIdentity.Domain.UserTel
+                Tels = model.Tels?.Select((x) => new MRUserTel
                 {
-                    CreatedTime = DateTime.UtcNow,
                     Name = x.Name,
-                    Number = x.Number
-                }).ToList() ?? new List<MRDbIdentity.Domain.UserTel>(),
+                    Tel = x.Number
+                }).ToList() ?? new List<MRUserTel>(),
                 UserName = model.Email
             };
 
@@ -115,7 +115,7 @@ namespace Manager
             if (string.IsNullOrWhiteSpace(id))
                 throw new BadRequestException();
 
-            var entity = await _appUserRepository.GetByIdAdmin(id);
+            var entity = await _appUserRepository.Get(id);
             if (entity == null)
                 throw new EntityNotFoundException(id, typeof(AppUser));
 
@@ -124,7 +124,7 @@ namespace Manager
 
         public async Task<UserDataModel> Update(string id, UserCreateModel model)
         {
-            if (!_currentUserRoles.Contains(UserRoles.ADMIN))
+            if (!_userRoles.Contains(UserRoles.ADMIN))
                 throw new AccessDeniedException(id, typeof(AppUser));
 
             var target = await _appUserManager.FindByIdAsync(id);
@@ -143,10 +143,10 @@ namespace Manager
 
         public async Task<ApiOkResult> UpdateRoles(string id, UserRoleUpdateModel model)
         {
-            if (!_currentUserRoles.Contains(UserRoles.ADMIN))
+            if (!_userRoles.Contains(UserRoles.ADMIN))
                 throw new AccessDeniedException(id, typeof(AppUser));
 
-            if(id == _currentUserId && !model.Roles.Contains(UserRoles.ADMIN))
+            if(id == _userId && !model.Roles.Contains(UserRoles.ADMIN))
                 throw new AccessDeniedException(id, typeof(AppUser), "Can not remove admin role");
 
             var targetUser = await _appUserManager.FindByIdAsync(id);

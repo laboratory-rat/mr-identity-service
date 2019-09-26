@@ -4,7 +4,7 @@ using Infrastructure.Entities;
 using Infrastructure.Model.Common;
 using Infrastructure.Model.Provider;
 using Infrastructure.Model.User;
-using MRDbIdentity.Domain;
+using MRApiCommon.Infrastructure.IdentityExtensions.Components;
 using System;
 using System.Linq;
 
@@ -15,7 +15,7 @@ namespace IdentityApi.Helper
         public DomainProfile()
         {
             CreateMap<AppUser, UserLoginResponseModel>()
-                .ForMember(x => x.ImageSrc, opt => opt.MapFrom(x => x.Avatar == null ? null : x.Avatar.Src));
+                .ForMember(x => x.ImageSrc, opt => opt.MapFrom(x => x.Image == null ? null : x.Image.Url));
 
             // common models
             CreateMap<Language, LanguageDisplayModel>();
@@ -25,20 +25,18 @@ namespace IdentityApi.Helper
 
             // user
             CreateMap<AppUser, UserShortDataModel>()
-                .ForMember(x => x.AvatarSrc, opt => opt.MapFrom(z => z.Avatar == null ? null : z.Avatar.Src))
-                .ForMember(x => x.CreatedTime, opt => opt.MapFrom(z => z.CreatedTime.ToLocalTime()))
-                .ForMember(x => x.UpdatedTime, opt => opt.MapFrom(z => z.UpdatedTime.ToLocalTime()));
+                .ForMember(x => x.AvatarSrc, opt => opt.MapFrom(z => z.Image == null ? null : z.Image.Url))
+                .ForMember(x => x.CreatedTime, opt => opt.MapFrom(z => z.CreateTime.ToLocalTime()))
+                .ForMember(x => x.UpdatedTime, opt => opt.MapFrom(z => z.UpdateTime.HasValue ? z.UpdateTime.Value.ToLocalTime() : DateTime.UtcNow));
             CreateMap<AppUser, UserDataModel>()
                 .IncludeBase<AppUser, UserShortDataModel>()
-                .ForMember(x => x.Roles, opt => opt.MapFrom(z => z.Roles.Select(x => x.RoleName).ToList()));
+                .ForMember(x => x.Roles, opt => opt.MapFrom(z => z.Roles.Select(x => x.Name).ToList()));
             CreateMap<UserSocial, UserDataSocialModel>()
                 .ForMember(x => x.CreatedTime, opt => opt.MapFrom(z => z.CreatedTime.ToLocalTime()));
             CreateMap<AppUserProvider, UserDataProviderModel>();
-            CreateMap<UserTel, UserDataTel>()
-                .ForMember(x => x.CreatedTime, opt => opt.MapFrom(z => z.CreatedTime.ToLocalTime()));
-
+            CreateMap<MRUserTel, UserDataTel>();
             CreateMap<AppUser, UserDisplayModel>();
-            CreateMap<UserTel, UserTelDisplayModel>();
+            CreateMap<MRUserTel, UserTelDisplayModel>();
 
             CreateMap<UserSignupModel, AppUser>();
 

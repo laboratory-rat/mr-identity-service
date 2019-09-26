@@ -1,3 +1,0 @@
-[submodule "submodules/IdentityConnector"]
-	path = submodules/IdentityConnector
-	url = https://github.com/laboratory-rat/MRIdentityClient.git

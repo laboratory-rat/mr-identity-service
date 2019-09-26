@@ -12,6 +12,7 @@ using Infrastructure.Model.User;
 using Infrastructure.System.Options;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using MRApiCommon.Infrastructure.IdentityExtensions.Components;
 using MRIdentityClient.Exception.Basic;
 using MRIdentityClient.Exception.Common;
 using MRIdentityClient.Response;
@@ -65,7 +66,7 @@ namespace Manager
                     Email = model.Email.ToLower(),
                     FirstName = model.FirstName,
                     LastName = model.LastName,
-                    Tels = new List<MRDbIdentity.Domain.UserTel>(),
+                    Tels = new List<MRUserTel>(),
                     Status = UserStatus.Invited,
                     UserName = model.Email.ToLower(),
                 };

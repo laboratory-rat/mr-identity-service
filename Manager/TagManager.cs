@@ -9,6 +9,7 @@ using Infrastructure.Entities;
 using Infrastructure.Model.Provider;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using MRApiCommon.Infrastructure.Enum;
 using MRIdentityClient.Exception.Common;
 using MRIdentityClient.Models;
 using MRIdentityClient.Response;
@@ -37,7 +38,7 @@ namespace Manager
                 throw new ModelDamagedException("No default translation");
 
             model.Key = model.Key.ToLower();
-            var exists = await _providerTagRepository.Count(x => x.Key == model.Key && x.State);
+            var exists = await _providerTagRepository.Count(x => x.Key == model.Key && x.State == MREntityState.Active);
 
             if (exists > 0)
                 throw new EntityExistsException("1", "1", typeof(ProviderTag));
@@ -46,7 +47,7 @@ namespace Manager
             {
                 Key = model.Key,
                 UserCreatedId = "TEST_USER_ID",
-                State = true,
+                State = MREntityState.Active,
                 Translations = model.Translations.Select(x => new ProviderTagTranslation
                 {
                     IsDefault = x.IsDefault,

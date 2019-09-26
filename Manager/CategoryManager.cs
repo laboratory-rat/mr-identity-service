@@ -9,6 +9,7 @@ using Infrastructure.Entities;
 using Infrastructure.Model.Provider;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using MRApiCommon.Infrastructure.Enum;
 using MRIdentityClient.Exception.Common;
 using MRIdentityClient.Models;
 using MRIdentityClient.Response;
@@ -37,7 +38,7 @@ namespace Manager
             CheckUpdateModel(model);
 
             model.Slug = model.Slug.ToLower();
-            if ((await _providerCategoryRepository.Count(x => x.Slug == model.Slug && x.State)) > 0)
+            if(await _providerCategoryRepository.Any(x => x.Slug == model.Slug && x.State == MREntityState.Active))
                 throw new ModelDamagedException(nameof(model.Slug), "category with this slug already exists");
 
             var entity = _mapper.Map<ProviderCategory>(model);
@@ -167,11 +168,10 @@ namespace Manager
             if (string.IsNullOrWhiteSpace(id))
                 throw new ModelDamagedException(nameof(id), "is required");
 
-            var count = await _providerCategoryRepository.Count(x => x.State && x.Id == id);
-            if (count < 1)
+            if(!(await _providerCategoryRepository.Any(x => x.State == MREntityState.Active && x.Id == id)))
                 throw new EntityNotFoundException(id, typeof(ProviderCategory));
 
-            await _providerCategoryRepository.RemoveSoft(id);
+            await _providerCategoryRepository.DeleteSoft(id);
         }
 
         protected void CheckUpdateModel(CategoryUpdateModel model)

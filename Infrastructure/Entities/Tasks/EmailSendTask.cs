@@ -1,16 +1,13 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
-using MRDb.Domain;
-using MRDb.Infrastructure.Interface;
+using MRApiCommon.Infrastructure.Database;
+using MRApiCommon.Infrastructure.Interface;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Infrastructure.Entities.Tasks
 {
-    public class EmailSendTask : Entity, IEntity
+    public class EmailSendTask : MREntity, IMREntity
     {
         [BsonRepresentation(BsonType.String)]
         public EmailTaskBot Bot { get; set; }

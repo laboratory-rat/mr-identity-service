@@ -1,10 +1,4 @@
-﻿using MRDb.Domain;
-using MRDb.Infrastructure.Interface;
-using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Infrastructure.Entities
+﻿namespace Infrastructure.Entities
 {
     public class Image
     {

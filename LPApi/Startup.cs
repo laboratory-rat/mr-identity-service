@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
-using MRDbIdentity.Domain;
 using Microsoft.IdentityModel.Tokens;
 using Manager.Options;
 using AutoMapper;
@@ -25,6 +24,9 @@ using Microsoft.Extensions.Logging;
 using NLog.Web;
 using NLog.Extensions.Logging;
 using IdentityApi.Middleware;
+using MRApiCommon.Extensions;
+using Infrastructure.Entities;
+using Dal;
 
 namespace IdentityApi
 {
@@ -41,35 +43,8 @@ namespace IdentityApi
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
-                {
-                    options.RequireHttpsMetadata = false;
-
-                    var parameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidIssuer = AuthOptions.ISSUER,
-
-                        ValidAudience = AuthOptions.AUDIENCE,
-
-                        ValidateLifetime = true,
-                        IssuerSigningKey = AuthOptions.GetSymmetricSecurityKey(),
-                        ValidateIssuerSigningKey = true
-                    };
-
-#if DEBUG
-                    parameters.ValidateAudience = false;
-#else
-                    parameters.ValidateAudience = true;
-#endif
-
-                    options.TokenValidationParameters = parameters;
-                });
-
-            services.AddIdentityCore<User>()
-                .AddDefaultTokenProviders();
-
+            services.ConfigureMRToken(Configuration, "AccessTokenOptions");
+            services.ConfigurateMRIdentity<AppUser, AppUserRepository, AppUserManager>(Configuration, "DbConnection", null);
             DI.AddDependencies(services, Configuration);
 
             services.AddSwaggerGen(c =>

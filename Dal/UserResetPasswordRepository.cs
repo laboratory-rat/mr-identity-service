@@ -1,33 +1,40 @@
 ﻿using Infrastructure.Entities;
+using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using MRDb.Infrastructure.Interface;
-using MRDb.Repository;
+using MRApiCommon.Infrastructure.Database;
+using MRApiCommon.Infrastructure.Enum;
+using MRApiCommon.Infrastructure.Interface;
+using MRApiCommon.Options;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Dal
 {
-    public class UserResetPasswordRepository : BaseRepository<UserResetPassword>, IRepository<UserResetPassword>
+    public class UserResetPasswordRepository : MRMongoRepository<UserResetPassword>, IMRRepository<UserResetPassword>
     {
-        public UserResetPasswordRepository(IMongoDatabase mongoDatabase) : base(mongoDatabase) { }
+        public UserResetPasswordRepository(IOptions<MRDbOptions> options) : base(options) { }
 
         public async Task<UserResetPassword> GetByUser(string userId, string code)
         {
-            var query =
-                DbQuery
-                    .Eq(x => x.UserId, userId)
-                    .Eq(x => x.Code, code)
-                    .Ascending(x => x.CreatedTime);
+            var query = _builder
+                .Eq(x => x.UserId, userId)
+                .Eq(x => x.State, MREntityState.Active)
+                .Eq(x => x.Code, code)
+                .Sorting(x => x.CreateTime, false);
 
-            return await GetFirst(query);
+            return await GetByQueryFirst(query);
         }
 
         public async Task ResetAllCodes(string userId)
         {
-            var query = DbQuery.Where(x => x.UserId == userId && x.State);
-            query.Update(builder => builder.Set(x => x.State, false));
+            var query = _builder
+                .Eq(x => x.UserId, userId)
+                .Eq(x => x.State, MREntityState.Active)
+                .UpdateSet(x => x.UpdateTime, DateTime.UtcNow)
+                .UpdateSet(x => x.State, MREntityState.Archived);
 
-            await _collection.UpdateManyAsync(query.FilterDefinition, query.UpdateDefinition);
+            await UpdateManyByQuery(query);
         }
     }
 }

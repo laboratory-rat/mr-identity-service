@@ -21,6 +21,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
+using MRApiCommon.Infrastructure.Enum;
+using MRApiCommon.Infrastructure.IdentityExtensions.Components;
 using MRIdentityClient.Email;
 using MRIdentityClient.Exception.Common;
 using MRIdentityClient.Exception.MRSystem;
@@ -105,9 +107,9 @@ namespace Manager
                     FirstName = data.GivenName,
                     LastName = data.FamilyName,
                     UserName = data.Email,
-                    Avatar = new MRDbIdentity.Domain.UserAvatar
+                    Image = new MRUserImage
                     {
-                        Src = data.Picture
+                        Url = data.Picture
                     },
                     Socials = new List<UserSocial>
                     {
@@ -196,7 +198,7 @@ namespace Manager
             if (user == null || !(await _appUserManager.CheckPasswordAsync(user, model.Password)))
                 throw new LoginFailedException(model.Email);
 
-            var provider = await _providerRepository.GetFirst(x => x.Id == model.ProviderId && x.State);
+            var provider = await _providerRepository.GetFirst(x => x.Id == model.ProviderId && x.State == MREntityState.Active);
             if (provider == null)
                 throw new EntityNotFoundException(model.ProviderId, typeof(Provider));
 
@@ -225,7 +227,7 @@ namespace Manager
             if (user == null)
                 throw new AccessDeniedException(string.Empty, typeof(AppUser), "Authorization required");
 
-            var provider = await _providerRepository.GetFirst(x => x.Id == providerId && x.State);
+            var provider = await _providerRepository.GetFirst(x => x.Id == providerId && x.State == MREntityState.Active);
             if (provider == null)
                 throw new MRSystemException("Provider not found");
 
@@ -257,11 +259,11 @@ namespace Manager
             if (!challengeResult.IsSuccess)
                 throw new MRSystemException(challengeResult.Error.Message);
 
-            var user = await _appUserRepository.GetFirst(challengeResult.UserId);
+            var user = await _appUserRepository.Get(challengeResult.UserId);
             if (user == null)
                 throw new EntityNotFoundException(challengeResult.UserId, typeof(AppUser));
 
-            if (user.IsBlocked)
+            if (user.Isblocked)
                 throw new MRSystemException("User blocked");
 
             var targetUProvider = user.ConnectedProviders.FirstOrDefault(x => x.ProviderId == challengeResult.ProviderId);
@@ -288,7 +290,7 @@ namespace Manager
 
             var result = new ApproveLogin
             {
-                AvatarUrl = user.Avatar?.Src,
+                AvatarUrl = user.Image?.Url,
                 Email = user.Email,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
@@ -349,7 +351,7 @@ namespace Manager
                 throw new EntityNotFoundException(model.Email, typeof(AppUser));
 
             var resetPasswordEntity = await _userResetPasswordRepository.GetByUser(user.Id, model.Token);
-            if (resetPasswordEntity == null || (DateTime.UtcNow - resetPasswordEntity.CreatedTime).TotalHours > 24)
+            if (resetPasswordEntity == null || (DateTime.UtcNow - resetPasswordEntity.CreateTime).TotalHours > 24)
                 throw new EntityNotFoundException(model.Token, typeof(UserResetPassword), "Can not find request to reset password");
 
 

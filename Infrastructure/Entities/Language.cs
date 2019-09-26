@@ -1,12 +1,9 @@
-﻿using MRDb.Domain;
-using MRDb.Infrastructure.Interface;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using MRApiCommon.Infrastructure.Database;
+using MRApiCommon.Infrastructure.Interface;
 
 namespace Infrastructure.Entities
 {
-    public class Language : Entity, IEntity
+    public class Language : MREntity, IMREntity
     {
         public string Code { get; set; }
         public string Name { get; set; }

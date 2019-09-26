@@ -1,12 +1,9 @@
-﻿using MRDb.Domain;
-using MRDb.Infrastructure.Interface;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using MRApiCommon.Infrastructure.Database;
+using MRApiCommon.Infrastructure.Interface;
 
 namespace Infrastructure.Entities
 {
-    public class UserInvite : Entity, IEntity
+    public class UserInvite : MREntity, IMREntity
     {
         public string UserId { get; set; }
 

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27703.2026
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28922.388
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dal", "Dal\Dal.csproj", "{158BDB23-4959-42B8-8AC5-7A2BDDD31160}"
 EndProject
@@ -24,10 +24,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Migrations", "Migrations", "{D8EB34DC-A9A1-4494-8CAB-D739435CD945}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MigrationRunner", "Migrations\MigrationRunner\MigrationRunner.csproj", "{96E6696E-52F5-437F-AEEE-F3D8B9DAB75D}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Submodules", "Submodules", "{6D1908AF-611B-4760-B791-5971C20E91D2}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MRIdentityClient", "submodules\IdentityConnector\MRIdentityClient.csproj", "{96BE164F-DB8B-4EEE-8BE9-5781553B906D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -90,12 +86,6 @@ Global
 		{96E6696E-52F5-437F-AEEE-F3D8B9DAB75D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{96E6696E-52F5-437F-AEEE-F3D8B9DAB75D}.Stage|Any CPU.ActiveCfg = Release|Any CPU
 		{96E6696E-52F5-437F-AEEE-F3D8B9DAB75D}.Stage|Any CPU.Build.0 = Release|Any CPU
-		{96BE164F-DB8B-4EEE-8BE9-5781553B906D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{96BE164F-DB8B-4EEE-8BE9-5781553B906D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{96BE164F-DB8B-4EEE-8BE9-5781553B906D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{96BE164F-DB8B-4EEE-8BE9-5781553B906D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{96BE164F-DB8B-4EEE-8BE9-5781553B906D}.Stage|Any CPU.ActiveCfg = Stage|Any CPU
-		{96BE164F-DB8B-4EEE-8BE9-5781553B906D}.Stage|Any CPU.Build.0 = Stage|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -104,7 +94,6 @@ Global
 		{C9E40421-A4D4-41F4-AC52-A3B8D0D1A71D} = {093A1DEA-AE20-4A19-8C95-61E3300BE268}
 		{643B63B3-A701-4F92-B894-118F70508951} = {093A1DEA-AE20-4A19-8C95-61E3300BE268}
 		{96E6696E-52F5-437F-AEEE-F3D8B9DAB75D} = {D8EB34DC-A9A1-4494-8CAB-D739435CD945}
-		{96BE164F-DB8B-4EEE-8BE9-5781553B906D} = {6D1908AF-611B-4760-B791-5971C20E91D2}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {3BE7B5F6-D619-43C7-A3B5-2EA55AD348EE}

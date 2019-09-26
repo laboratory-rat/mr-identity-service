@@ -8,7 +8,7 @@ using Infrastructure.Template.User;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
-using MRDbIdentity.Domain;
+using MRApiCommon.Infrastructure.IdentityExtensions.Components;
 using MRIdentityClient.Exception.Basic;
 using MRIdentityClient.Exception.Common;
 using MRIdentityClient.Response;
@@ -75,7 +75,7 @@ namespace Manager
 
             user.FirstName = model.FirstName;
             user.LastName = model.LastName;
-            user.UpdatedTime = DateTime.UtcNow;
+            user.UpdateTime = DateTime.UtcNow;
 
             var updateResult = await _appUserRepository.Replace(user);
             if (updateResult == null)
@@ -102,7 +102,7 @@ namespace Manager
 
             if (user.Tels == null)
             {
-                user.Tels = new List<UserTel>();
+                user.Tels = new List<MRUserTel>();
             }
             else
             {
@@ -110,11 +110,10 @@ namespace Manager
                     throw new EntityExistsException("Name", model.Name, typeof(string), "Tel with this name already exists");
             }
 
-            user.Tels.Add(new UserTel
+            user.Tels.Add(new MRUserTel
             {
-                CreatedTime = DateTime.UtcNow,
                 Name = model.Name,
-                Number = model.Number
+                Tel = model.Number
             });
 
             var updateResponse = await _appUserRepository.Replace(user);
@@ -188,8 +187,7 @@ namespace Manager
             if (user.Status == UserStatus.Blocked)
                 throw new MRException();
 
-            user.State = false;
-            await _appUserRepository.RemoveSoft(user.Id);
+            await _appUserRepository.DeleteSoft(user.Id);
 
             return new ApiOkResult();
         }

@@ -1,18 +1,19 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
-using MRDb.Domain;
-using MRDb.Infrastructure.Interface;
-using MRDbIdentity.Domain;
+using MRApiCommon.Infrastructure.IdentityExtensions.Components;
+using MRApiCommon.Infrastructure.Interface;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace Infrastructure.Entities
 {
-    public class AppUser : User, IEntity
+    public class AppUser : MRUser, IMREntity
     {
         [BsonRepresentation(BsonType.String)]
         public UserStatus Status { get; set; }
+
+        public DateTime? Birthday { get; set; }
 
         public List<UserSocial> Socials { get; set; } = new List<UserSocial>();
         public List<AppUserProvider> ConnectedProviders { get; set; } = new List<AppUserProvider>();

@@ -1,40 +1,37 @@
 ﻿using Infrastructure.Entities;
+using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using MRDb.Infrastructure.Interface;
-using MRDb.Repository;
-using System.Collections;
+using MRApiCommon.Infrastructure.Database;
+using MRApiCommon.Infrastructure.Interface;
+using MRApiCommon.Options;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Dal
 {
-    public class LanguageRepository : BaseRepository<Language>, IRepository<Language>
+    public class LanguageRepository : MRMongoRepository<Language>, IMRRepository<Language>
     {
-        public LanguageRepository(IMongoDatabase mongoDatabase) : base(mongoDatabase)
-        {
-        }
+        public LanguageRepository(IOptions<MRDbOptions> mongoDatabase) : base(mongoDatabase) { }
 
         public async Task<IEnumerable<Language>> Search(int skip, int limit, string q)
         {
-            var filter = DbQuery;
+            var query = _builder
+                .Skip(skip)
+                .Limit(limit);
 
             if (!string.IsNullOrWhiteSpace(q))
             {
-                q = q.ToLower();
-
-                filter = DbQuery.CustomSearch(x
-                    => x.Or(
-                        x.Regex(z => z.Code, new MongoDB.Bson.BsonRegularExpression($"{q}", "i")),
-                        x.Regex(z => z.Name, new MongoDB.Bson.BsonRegularExpression($"{q}", "i")),
-                        x.Regex(z => z.NativeName, new MongoDB.Bson.BsonRegularExpression($"{q}", "i"))));
+                q = q.Trim();
+                query
+                    .Or(
+                        new FilterDefinition<Language>[] {
+                            _builder.FilterBuilder.Regex(x => x.Code, new MongoDB.Bson.BsonRegularExpression(q, "i")),
+                            _builder.FilterBuilder.Regex(x => x.Name, new MongoDB.Bson.BsonRegularExpression(q, "i")),
+                            _builder.FilterBuilder.Regex(x => x.NativeName, new MongoDB.Bson.BsonRegularExpression(q, "i"))
+                        });
             }
 
-
-            filter.Limit = limit;
-            filter.Skip = skip;
-            filter.Descending(x => x.CreatedTime);
-
-            return await Get(filter);
+            return await GetByQuery(query);
         }
     }
 }

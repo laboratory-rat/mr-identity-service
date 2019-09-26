@@ -1,57 +1,40 @@
 ﻿using Infrastructure.Entities;
+using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using MRDb.Infrastructure.Interface;
-using MRDb.Repository;
-using MRDb.Tools;
+using MRApiCommon.Infrastructure.Database;
+using MRApiCommon.Infrastructure.Enum;
+using MRApiCommon.Infrastructure.Interface;
+using MRApiCommon.Options;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace Dal
 {
-    public class ProviderTagRepository : BaseRepository<ProviderTag>, IRepository<ProviderTag>
+    public class ProviderTagRepository : MRMongoRepository<ProviderTag>, IMRRepository<ProviderTag>
     {
-        public ProviderTagRepository(IMongoDatabase mongoDatabase) : base(mongoDatabase)
+        public ProviderTagRepository(IOptions<MRDbOptions> options) : base(options) { }
+
+        public async Task<IEnumerable<ProviderTag>> Search(int skip, int limit, string q)
         {
-        }
+            var query = _builder
+                .Eq(x => x.State, MREntityState.Active)
+                .Skip(skip)
+                .Limit(limit)
+                .Sorting(x => x.CreateTime, true);
 
-        public async Task<ICollection<ProviderTag>> GetAll(IEnumerable<string> ids)
-        {
-            if (ids == null || !ids.Any()) return new List<ProviderTag>();
-
-            var query = DbQuery
-                .Where(x => x.State)
-                .Contains(x => x.Id, ids)
-                .Descending(x => x.CreatedTime);
-
-            return await Get(query);
-        }
-
-        public async Task<ICollection<ProviderTag>> Search(int skip, int limit, string q)
-        {
-            DbQuery<ProviderTag> query = null;
-            if (!string.IsNullOrWhiteSpace(q))
+            if (!string.IsNullOrEmpty(q))
             {
-
-                query = DbQuery
-                    .CustomSearch(
-                    x => x.And(
-                            x.Where(z => z.State),
-                            x.Or(
-                                x.Regex(z => z.Key, new MongoDB.Bson.BsonRegularExpression(q, "i")),
-                                x.ElemMatch(z => z.Translations, z => z.Name.ToLower().Contains(q.ToLower()))
-                                )))
-                    .Descending(x => x.CreatedTime);
-            }
-            else
-            {
-                query = DbQuery.Where(x => x.State).Descending(x => x.CreatedTime);
+                q = q.Trim().ToLowerInvariant();
+                query
+                    .Or(
+                        _builder.FilterBuilder.Regex(x => x.Key, new MongoDB.Bson.BsonRegularExpression(q, "i")),
+                        _builder.FilterBuilder.ElemMatch(x => x.Translations, x => x.Name.ToLowerInvariant().Contains(q))
+                    );
             }
 
-            query.Skip = skip;
-            query.Limit = limit;
 
-            return await Get(query);
+            return await GetByQuery(query);
         }
     }
 }

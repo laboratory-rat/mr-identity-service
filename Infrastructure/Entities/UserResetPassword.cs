@@ -1,9 +1,9 @@
-﻿using MRDb.Domain;
-using MRDb.Infrastructure.Interface;
+﻿using MRApiCommon.Infrastructure.Database;
+using MRApiCommon.Infrastructure.Interface;
 
 namespace Infrastructure.Entities
 {
-    public class UserResetPassword : Entity, IEntity
+    public class UserResetPassword : MREntity, IMREntity
     {
         public string UserId { get; set; }
         public string Code { get; set; }

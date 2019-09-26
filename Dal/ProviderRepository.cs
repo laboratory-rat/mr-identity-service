@@ -1,113 +1,127 @@
 ﻿using Infrastructure.Entities;
+using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using MRDb.Infrastructure.Interface;
-using MRDb.Repository;
-using MRDb.Tools;
+using MRApiCommon.Infrastructure.Database;
+using MRApiCommon.Infrastructure.Enum;
+using MRApiCommon.Infrastructure.Interface;
+using MRApiCommon.Options;
+using MRApiCommon.Tools;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Dal
 {
-    public class ProviderRepository : BaseRepository<Provider>, IRepository<Provider>
+    public class ProviderRepository : MRMongoRepository<Provider>, IMRRepository<Provider>
     {
-        public ProviderRepository(IMongoDatabase mongoDatabase) : base(mongoDatabase) { }
+        public ProviderRepository(IOptions<MRDbOptions> options) : base(options) { }
 
         public async Task<Provider> GetShortBySlug(string slug)
         {
-            var query = DbQuery
-                .Eq(x => x.Slug, slug.ToLower())
-                .Eq(x => x.State, true)
-                .Projection(z => z
-                    .Include(x => x.Id)
-                    .Include(x => x.Name)
-                    .Include(x => x.IsVisible)
-                    .Include(x => x.IsLoginEnabled)
-                    .Include(x => x.Slug)
-                    .Include(x => x.UpdatedTime)
-                    .Include(x => x.CreatedTime)
-                    .Include(x => x.State));
+            slug = slug.Trim().ToLowerInvariant();
 
-            return await _collection.Find(query.FilterDefinition).Project<Provider>(query.ProjectionDefinition).FirstOrDefaultAsync();
+            var query = _builder
+                .Eq(x => x.Slug, slug)
+                .Eq(x => x.State, MREntityState.Active)
+                    .ProjectionInclude(x => x.Id)
+                    .ProjectionInclude(x => x.Name)
+                    .ProjectionInclude(x => x.IsVisible)
+                    .ProjectionInclude(x => x.IsLoginEnabled)
+                    .ProjectionInclude(x => x.Slug)
+                    .ProjectionInclude(x => x.UpdateTime)
+                    .ProjectionInclude(x => x.CreateTime)
+                    .ProjectionInclude(x => x.State);
+
+            return await GetByQueryFirst(query);
         }
         public async Task<Provider> GetShortById(string id)
         {
-            var query = DbQuery
+            var query = _builder
                 .Eq(x => x.Id, id)
-                .Eq(x => x.State, true)
-                .Projection(z => z
-                    .Include(x => x.Id)
-                    .Include(x => x.Name)
-                    .Include(x => x.IsVisible)
-                    .Include(x => x.IsLoginEnabled)
-                    .Include(x => x.Slug)
-                    .Include(x => x.UpdatedTime)
-                    .Include(x => x.CreatedTime)
-                    .Include(x => x.State));
+                .Eq(x => x.State, MREntityState.Active)
+                    .ProjectionInclude(x => x.Id)
+                    .ProjectionInclude(x => x.Name)
+                    .ProjectionInclude(x => x.IsVisible)
+                    .ProjectionInclude(x => x.IsLoginEnabled)
+                    .ProjectionInclude(x => x.Slug)
+                    .ProjectionInclude(x => x.UpdateTime)
+                    .ProjectionInclude(x => x.CreateTime)
+                    .ProjectionInclude(x => x.State);
 
-            return await _collection.Find(query.FilterDefinition).Project<Provider>(query.ProjectionDefinition).FirstOrDefaultAsync();
+            return await GetByQueryFirst(query);
         }
 
         #region Roles
 
         public async Task<List<ProviderRole>> GetRolesById(string id)
         {
-            var query = DbQuery
+            var query = _builder
                 .Eq(x => x.Id, id)
-                .Eq(x => x.State, true)
-                .Projection(z => z.Include(x => x.Roles));
+                .Eq(x => x.State, MREntityState.Active)
+                    .ProjectionInclude(x => x.Roles)
+                    .ProjectionInclude(x => x.Id);
 
-            return (await _collection.Find(query.FilterDefinition).Project<Provider>(query.ProjectionDefinition).FirstOrDefaultAsync())?.Roles ?? new List<ProviderRole>();
+            return (await GetByQueryFirst(query))?.Roles
+                ?? new List<ProviderRole>();
         }
         public async Task<List<ProviderRole>> GetRolesBySlug(string slug)
         {
             var query = _getSlugQuery(slug)
-                .Projection(z => z.Include(x => x.Roles));
+                .ProjectionInclude(x => x.Roles)
+                .ProjectionInclude(x => x.Id);
 
-            return (await _collection.Find(query.FilterDefinition).Project<Provider>(query.ProjectionDefinition).FirstOrDefaultAsync())?.Roles ?? new List<ProviderRole>();
+            return (await GetByQueryFirst(query))?.Roles
+                ?? new List<ProviderRole>();
         }
 
         public async Task<bool> RoleNameExistsBySlug(string slug, string name)
         {
-            var query = DbQuery.CustomSearch(z => z.And(
-                z.Eq(x => x.Slug, slug),
-                z.Eq(x => x.State, true),
-                z.ElemMatch(x => x.Roles, x => x.Name == name)));
+            var query = _builder
+                .Eq(x => x.Slug, slug)
+                .Eq(x => x.State, MREntityState.Active)
+                .Match(x => x.Roles, x => x.Name == name);
 
-            return (await _collection.CountDocumentsAsync(query.FilterDefinition)) == 1;
+            return await ExistsOne(query);
         }
 
         public async Task<bool> InsertRole(string id, ProviderRole role)
         {
             var query = _getIdQuery(id)
-                .Update(z => z.AddToSet(x => x.Roles, role))
-                .Update(x => x.Set(z => z.UpdatedTime, DateTime.UtcNow));
+                .UpdateSet(x => x.UpdateTime, DateTime.UtcNow)
+                .UpdateAddToSet(x => x.Roles, role);
 
-            return (await _collection.UpdateOneAsync(query.FilterDefinition, query.UpdateDefinition)).MatchedCount == 1;
+            await UpdateByQuery(query);
+            return true;
         }
 
         public async Task<bool> InsertRoleBySlug(string slug, ProviderRole role)
         {
             var query = _getSlugQuery(slug)
-                .Update(z => z.AddToSet(x => x.Roles, role).Set(x => x.UpdatedTime, DateTime.UtcNow));
+                .UpdateSet(x => x.UpdateTime, DateTime.UtcNow)
+                .UpdateAddToSet(x => x.Roles, role);
 
-            return (await _collection.UpdateOneAsync(query.FilterDefinition, query.UpdateDefinition)).MatchedCount == 1;
+            await UpdateByQuery(query);
+            return true;
         }
 
 
         public async Task<bool> RemoveRole(string id, string roleName)
         {
             var query = _getIdQuery(id)
-                .Update(x => x.PullFilter(z => z.Roles, z => z.Name == roleName));
+                .Match(x => x.Roles, x => x.Name == roleName)
+                .UpdatePullWhere(x => x.Roles, x => x.Name == roleName);
 
-            return (await _collection.UpdateOneAsync(query.FilterDefinition, query.UpdateDefinition)).ModifiedCount == 1;
+            await UpdateByQuery(query);
+            return true;
         }
         public async Task<bool> RemoveRoleBySlug(string slug, string roleName)
         {
             var query = _getSlugQuery(slug)
-                .Update(x => x.PullFilter(z => z.Roles, z => z.Name == roleName));
+                               .Match(x => x.Roles, x => x.Name == roleName)
+                .UpdatePullWhere(x => x.Roles, x => x.Name == roleName);
 
-            return (await _collection.UpdateOneAsync(query.FilterDefinition, query.UpdateDefinition)).ModifiedCount == 1;
+            await UpdateByQuery(query);
+            return true;
         }
 
         #endregion Roles
@@ -117,37 +131,39 @@ namespace Dal
         public async Task<bool> InsertFingerprint(string id, ProviderFingerprint fingerpeint)
         {
             var query = _getIdQuery(id)
-                .Update(x => x.AddToSet(z => z.Fingerprints, fingerpeint))
-                .Update(x => x.Set(z => z.UpdatedTime, DateTime.UtcNow));
+                .UpdateSet(x => x.UpdateTime, DateTime.UtcNow)
+                .UpdateAddToSet(x => x.Fingerprints, fingerpeint);
 
-            return (await _collection.UpdateOneAsync(query.FilterDefinition, query.UpdateDefinition)).ModifiedCount == 1;
+            await UpdateByQuery(query);
+            return true;
         }
 
         public async Task<bool> RemoveFingerprint(string id, string fingerprintName)
         {
             var query = _getIdQuery(id)
-                .Update(z => z.PullFilter(x => x.Fingerprints, x => x.Name == fingerprintName));
+                .UpdatePullWhere(x => x.Fingerprints, x => x.Name == fingerprintName);
 
-            return (await _collection.UpdateOneAsync(query.FilterDefinition, query.UpdateDefinition)).ModifiedCount == 1;
+            await UpdateByQuery(query);
+            return true;
         }
 
         public async Task UpdateFingerprints(Provider entity)
         {
-            var filter = DbQuery
+            var query = _builder
                 .Eq(x => x.Id, entity.Id)
-                .Update(x => x.Set(z => z.Fingerprints, entity.Fingerprints).Set(z => z.UpdatedTime, DateTime.UtcNow));
+                .UpdateSet(x => x.UpdateTime, DateTime.UtcNow)
+                .UpdateSet(x => x.Fingerprints, entity.Fingerprints);
 
-            await _collection.UpdateOneAsync(filter.FilterDefinition, filter.UpdateDefinition);
+            await UpdateByQuery(query);
         }
 
         public async Task<Provider> GetByFingerprint(string fingerprint)
         {
-            var filter = DbQuery
-                .CustomSearch(x => x.And(
-                    x.Eq(z => z.State, true),
-                    x.ElemMatch(z => z.Fingerprints, z => z.Fingerprint == fingerprint)));
+            var query = _builder
+                .Eq(x => x.State, MREntityState.Active)
+                .Match(x => x.Fingerprints, x => x.Fingerprint == fingerprint);
 
-            return await _collection.Find(filter.FilterDefinition).FirstOrDefaultAsync();
+            return await GetByQueryFirst(query);
         }
 
         #endregion Fingerprints
@@ -156,114 +172,120 @@ namespace Dal
 
         public async Task<long> UserInWorkersCount(string userId)
         {
-            var q = DbQuery.CustomSearch(x => x.And(
-                x.Eq(z => z.State, true),
-                x.ElemMatch(z => z.Workers, z => z.UserId == userId)));
+            var query = _builder
+                .Eq(x => x.State, MREntityState.Active)
+                .Match(x => x.Workers, x => x.UserId == userId);
 
-            return await _collection.CountDocumentsAsync(q.FilterDefinition);
+            return await Count(query);
         }
 
         public async Task<bool> IsWorkerInRoleBySlug(string slug, string userId, ProviderWorkerRole role)
         {
-            var filter = DbQuery.CustomSearch(z => z.And(
-                z.Eq(x => x.Slug, slug.ToLower()),
-                z.Eq(x => x.State, true),
-                z.ElemMatch(x => x.Workers, x => x.UserId == userId && x.Roles.Contains(role))));
+            var query = _builder
+                .Eq(x => x.Slug, slug)
+                .Eq(x => x.State, MREntityState.Active)
+                .Match(x => x.Workers, x => x.UserId == userId && x.Roles.Contains(role));
 
-            return (await _collection.CountDocumentsAsync(filter.FilterDefinition)) == 1;
+            return await ExistsOne(query);
         }
 
         public async Task<bool> IsWorkerExistsBySlug(string slug, string userId)
         {
-            var q = DbQuery.CustomSearch(x => x.And(
-                x.Eq(z => z.Slug, slug.ToLower()),
-                x.Eq(z => z.State, true),
-                x.ElemMatch(z => z.Workers, z => z.UserId == userId)));
+            var query = _builder
+                .Eq(x => x.Slug, slug)
+                .Eq(x => x.State, MREntityState.Active)
+                .Match(x => x.Workers, x => x.UserId == userId);
 
-            return (await _collection.CountDocumentsAsync(q.FilterDefinition)) == 1;
+            return await ExistsOne(query);
         }
 
         public async Task<List<ProviderWorker>> GetWorkersBySlug(string slug)
         {
-            var filter = _getSlugQuery(slug)
-                .Projection(x => x.Include(z => z.Workers));
+            var query = _getSlugQuery(slug)
+                .ProjectionInclude(x => x.Id)
+                .ProjectionInclude(x => x.Workers);
 
-            return (await _collection.Find(filter.FilterDefinition).Project<Provider>(filter.ProjectionDefinition).FirstOrDefaultAsync())?.Workers ?? new List<ProviderWorker>();
+            return (await GetByQueryFirst(query))?.Workers;
         }
 
         public async Task<bool> InsertWorkersBySlug(string slug, ProviderWorker worker) => await InsertWorkersBySlug(slug, new List<ProviderWorker>() { worker });
         public async Task<bool> InsertWorkersBySlug(string slug, IEnumerable<ProviderWorker> workers)
         {
-            var q = _getSlugQuery(slug)
-                .Update(x => x.AddToSetEach(z => z.Workers, workers));
+            var query = _getSlugQuery(slug)
+                .UpdateAddToSetEach(x => x.Workers, workers);
 
-            return (await _collection.UpdateOneAsync(q.FilterDefinition, q.UpdateDefinition)).ModifiedCount == 1;
+            await UpdateByQuery(query);
+            return true;
         }
 
         public async Task<bool> InsertWorkersById(string id, IEnumerable<ProviderWorker> workers)
         {
-            var q = _getIdQuery(id)
-                .Update(x => x.AddToSetEach(z => z.Workers, workers));
+            var query = _getIdQuery(id)
+                .UpdateAddToSetEach(x => x.Workers, workers);
 
-            return (await _collection.UpdateOneAsync(q.FilterDefinition, q.UpdateDefinition)).ModifiedCount == 1;
+            await UpdateByQuery(query);
+            return true;
         }
 
         public async Task<bool> RemoveWorkerBySlug(string slug, string userId)
         {
-            var q = _getSlugQuery(slug)
-                .Update(x => x.PullFilter(z => z.Workers, z => z.UserId == userId));
+            var query = _getSlugQuery(slug)
+                .Match(x => x.Workers, x => x.UserId == userId)
+                .UpdatePullWhere(x => x.Workers, x => x.UserId == userId);
 
-            return (await _collection.UpdateOneAsync(q.FilterDefinition, q.UpdateDefinition)).ModifiedCount == 1;
+            await UpdateByQuery(query);
+            return true;
         }
 
         public async Task<bool> RemoveWorker(string id, string userId)
         {
-            var q = _getIdQuery(id)
-                .Update(x => x.PullFilter(z => z.Workers, z => z.UserId == userId));
+            var query = _getIdQuery(id)
+                .Match(x => x.Workers, x => x.UserId == userId)
+                .UpdatePullWhere(x => x.Workers, x => x.UserId == userId);
 
-            return (await _collection.UpdateOneAsync(q.FilterDefinition, q.UpdateDefinition)).ModifiedCount == 1;
+            await UpdateByQuery(query);
+            return true;
         }
 
         public async Task<bool> UpdateWorkerBySlug(string slug, string userId, IEnumerable<ProviderWorkerRole> roles)
         {
-            var q = DbQuery.CustomSearch(z => z.And(
-                z.Eq(x => x.Slug, slug),
-                z.Eq(x => x.State, true),
-                z.ElemMatch(x => x.Workers, x => x.UserId == userId)))
-                .Update(x => x.Set(z => z.Workers[0].Roles, roles));
+            var query = _builder
+                .Eq(x => x.Slug, slug)
+                .Eq(x => x.State, MREntityState.Active)
+                .Match(x => x.Workers, x => x.UserId == userId)
+                .UpdateSet(x => x.Workers[-1].Roles, roles);
 
-            return (await _collection.UpdateOneAsync(q.FilterDefinition, q.UpdateDefinition)).ModifiedCount == 1;
+            await UpdateByQuery(query);
+            return true;
         }
 
         public async Task<bool> UpdateWorker(string id, string userId, IEnumerable<ProviderWorkerRole> roles)
         {
-            var q = DbQuery.CustomSearch(z => z.And(
-                z.Eq(x => x.Id, id),
-                z.Eq(x => x.State, true),
-                z.ElemMatch(x => x.Workers, x => x.UserId == userId)))
-                .Update(x => x.Set(z => z.Workers[0].Roles, roles));
+            var query = _builder
+                .Eq(x => x.Id, id)
+                .Eq(x => x.State, MREntityState.Active)
+                .Match(x => x.Workers, x => x.UserId == userId)
+                .UpdateSet(x => x.Workers[-1].Roles, roles);
 
-            return (await _collection.UpdateOneAsync(q.FilterDefinition, q.UpdateDefinition)).ModifiedCount == 1;
+            await UpdateByQuery(query);
+            return true;
         }
 
         #endregion Workers
 
         public async Task<bool> ExistsWithOwner(string id, string userId)
-        {
-            return (await _collection.CountDocumentsAsync(x => x.Id == id && x.Owner != null && x.State && x.Owner.Id == userId)) == 1;
-        }
+            => await ExistsOne(_builder
+                .Eq(x => x.Id, id)
+                .Eq(x => x.State, MREntityState.Active)
+                .Where(x => x.Owner != null && x.Owner.Id == userId));
 
         public async Task<bool> ExistsWithOwnerSlug(string slug, string userId)
-        {
-            var queury = DbQuery
+            => await ExistsOne(_builder
                 .Eq(x => x.Slug, slug)
-                .Eq(x => x.State, true)
-                .Eq(x => x.Owner.Id, userId);
+                .Eq(x => x.State, MREntityState.Active)
+                .Where(x => x.Owner != null && x.Owner.Id == userId));
 
-            return (await _collection.CountDocumentsAsync(DbQuery.FilterDefinition)) == 1;
-        }
-
-        protected DbQuery<Provider> _getIdQuery(string id) => DbQuery.Eq(x => x.Id, id).Eq(x => x.State, true);
-        protected DbQuery<Provider> _getSlugQuery(string slug) => DbQuery.Eq(x => x.Slug, slug).Eq(x => x.State, true);
+        protected MongoQueryBuilder<Provider, string> _getIdQuery(string id) => _builder.Eq(x => x.Id, id).Eq(x => x.State, MREntityState.Active);
+        protected MongoQueryBuilder<Provider, string> _getSlugQuery(string slug) => _builder.Eq(x => x.Slug, slug).Eq(x => x.State, MREntityState.Active);
     }
 }

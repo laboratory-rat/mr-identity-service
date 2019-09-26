@@ -10,6 +10,8 @@ using Infrastructure.Model.Provider;
 using Infrastructure.System.Options;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using MRApiCommon.Infrastructure.Enum;
+using MRApiCommon.Infrastructure.IdentityExtensions.Components;
 using MRIdentityClient.Exception.Basic;
 using MRIdentityClient.Exception.Common;
 using MRIdentityClient.Response;
@@ -33,7 +35,7 @@ namespace Manager
 
         public async Task<ProviderWorkerDisplayModel> CreateBySlug(string slug, ProviderWorkerCreateModel model)
         {
-            if (!await _providerRepository.IsWorkerInRoleBySlug(slug, _currentUserId, ProviderWorkerRole.USER_MANAGER))
+            if (!await _providerRepository.IsWorkerInRoleBySlug(slug, _userId, ProviderWorkerRole.USER_MANAGER))
                 throw new AccessDeniedException(slug, typeof(ProviderWorker));
 
             model.Email = model.Email.ToLower();
@@ -45,15 +47,15 @@ namespace Manager
             {
                 existsUser = new AppUser
                 {
-                    CreatedTime = DateTime.UtcNow,
-                    State = true,
+                    CreateTime = DateTime.UtcNow,
+                    State = MREntityState.Active,
                     Status = UserStatus.Invited,
-                    Tels = new List<MRDbIdentity.Domain.UserTel>(),
+                    Tels = new List<MRUserTel>(),
                     UserName = model.Email,
                     Email = model.Email,
                     FirstName = model.FirstName,
                     LastName = model.LastName,
-                    UpdatedTime = DateTime.UtcNow,
+                    UpdateTime = DateTime.UtcNow,
                 };
 
                 existsUser = await _appUserRepository.Insert(existsUser);
@@ -71,7 +73,7 @@ namespace Manager
                     IsByIdentity = false,
                     ProviderId = providerShort.Id,
                     ProviderName = providerShort.Name,
-                    State = true,
+                    State = MREntityState.Active,
                     UserId = existsUser.Id
                 });
 
@@ -100,14 +102,14 @@ namespace Manager
 
             await _providerRepository.InsertWorkersBySlug(slug, worker);
 
-            _logger.LogInformation("Added new worker {0} to provider {1} by user {2}", worker.UserEmail, slug, _currentUserEmail);
+            _logger.LogInformation("Added new worker {0} to provider {1} by user {2}", worker.UserEmail, slug, _userEmail);
 
             return _mapper.Map<ProviderWorkerDisplayModel>(worker).ApplyUser(existsUser);
         }
 
         public async Task<ApiListResponse<ProviderWorkerDisplayModel>> GetBySlug(string slug)
         {
-            if (!await _providerRepository.IsWorkerExistsBySlug(slug, _currentUserId))
+            if (!await _providerRepository.IsWorkerExistsBySlug(slug, _userId))
                 throw new AccessDeniedException(slug, typeof(ProviderWorker));
 
             var entities = await _providerRepository.GetWorkersBySlug(slug);
@@ -127,7 +129,7 @@ namespace Manager
 
         public async Task<ProviderWorkerDisplayModel> UpdateBySlug(string slug, ProviderWorkerUpdateModel model)
         {
-            if (!await _providerRepository.IsWorkerInRoleBySlug(slug, _currentUserId, ProviderWorkerRole.USER_MANAGER))
+            if (!await _providerRepository.IsWorkerInRoleBySlug(slug, _userId, ProviderWorkerRole.USER_MANAGER))
                 throw new AccessDeniedException("", typeof(AppUser));
 
             var shortUser = await _appUserRepository.GetShortById(model.UserId);
@@ -156,7 +158,7 @@ namespace Manager
 
         public async Task<ApiOkResult> Delete(string slug, string userId)
         {
-            if (!await _providerRepository.IsWorkerInRoleBySlug(slug, _currentUserId, ProviderWorkerRole.USER_MANAGER))
+            if (!await _providerRepository.IsWorkerInRoleBySlug(slug, _userId, ProviderWorkerRole.USER_MANAGER))
                 throw new AccessDeniedException(userId, typeof(AppUser));
 
             if (await _providerRepository.IsWorkerInRoleBySlug(slug, userId, ProviderWorkerRole.OWNER))

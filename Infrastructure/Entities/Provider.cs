@@ -1,17 +1,15 @@
 ﻿using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-using MRDb.Domain;
-using MRDb.Infrastructure.Interface;
+using MRApiCommon.Infrastructure.Database;
+using MRApiCommon.Infrastructure.Interface;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Text;
 
 namespace Infrastructure.Entities
 {
-    public class Provider : Entity, IEntity
+    public class Provider : MREntity, IMREntity
     {
         public string Name { get; set; }
         public string Slug { get; set; }

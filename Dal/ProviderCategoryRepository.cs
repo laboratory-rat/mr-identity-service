@@ -1,52 +1,35 @@
 ﻿using Infrastructure.Entities;
+using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using MRDb.Infrastructure.Interface;
-using MRDb.Repository;
-using MRDb.Tools;
+using MRApiCommon.Infrastructure.Database;
+using MRApiCommon.Infrastructure.Interface;
+using MRApiCommon.Options;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace Dal
 {
-    public class ProviderCategoryRepository : BaseRepository<ProviderCategory>, IRepository<ProviderCategory>
+    public class ProviderCategoryRepository : MRMongoRepository<ProviderCategory>, IMRRepository<ProviderCategory>
     {
-        public ProviderCategoryRepository(IMongoDatabase mongoDatabase) : base(mongoDatabase)
+        public ProviderCategoryRepository(IOptions<MRDbOptions> options) : base(options)
         {
         }
 
-        public async Task<ICollection<ProviderCategory>> GetAll(IEnumerable<string> ids)
+        public async Task<IEnumerable<ProviderCategory>> Search(int skip, int limit, string q)
         {
-            if (ids == null || !ids.Any()) return new List<ProviderCategory>();
-
-            var query = DbQuery
-                .Where(x => x.State)
-                .Contains(x => x.Id, ids)
-                .Descending(x => x.CreatedTime);
-
-            return await Get(query);
-        }
-
-        public async Task<ICollection<ProviderCategory>> Search(int skip, int limit, string q)
-        {
-            DbQuery<ProviderCategory> query = null;
+            var query = _builder
+                .Eq(x => x.State, MRApiCommon.Infrastructure.Enum.MREntityState.Active)
+                .Skip(skip)
+                .Limit(limit);
 
             if (!string.IsNullOrWhiteSpace(q))
             {
-                query = DbQuery.CustomSearch(x =>
-                x.And(
-                    x.Where(z => z.State),
-                    x.ElemMatch(z => z.Translations, z => z.Name.Contains(q))));
-            }
-            else
-            {
-                query = DbQuery.Where(x => x.State);
+                q = q.Trim().ToLowerInvariant();
+                query.Match(x => x.Translations, x => x.Name.ToLowerInvariant().Contains(q));
             }
 
-            query.Skip = skip;
-            query.Limit = limit;
-
-            return await Get(query);
+            return await GetByQuery(query);
         }
     }
 }

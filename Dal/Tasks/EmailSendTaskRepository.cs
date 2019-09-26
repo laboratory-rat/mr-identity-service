@@ -1,17 +1,21 @@
 ﻿using Infrastructure.Entities.Tasks;
+using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using MRDb.Infrastructure.Interface;
-using MRDb.Repository;
+using MRApiCommon.Infrastructure.Database;
+using MRApiCommon.Infrastructure.Enum;
+using MRApiCommon.Infrastructure.Interface;
+using MRApiCommon.Options;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Dal.Tasks
 {
-    public class EmailSendTaskRepository : BaseRepository<EmailSendTask>, IRepository<EmailSendTask>
+    public class EmailSendTaskRepository : MRMongoRepository<EmailSendTask>, IMRRepository<EmailSendTask>
     {
-        public EmailSendTaskRepository(IMongoDatabase mongoDatabase) : base(mongoDatabase) { }
+        public EmailSendTaskRepository(IOptions<MRDbOptions> options) : base(options) { }
 
         public async Task InsertEmail(string toEmail, string subject, string body, EmailTaskBot bot)
         {
@@ -25,38 +29,49 @@ namespace Dal.Tasks
             });
         }
 
-        public async Task<ICollection<EmailSendTask>> GetByStatus(EmailSendStatus status, int? limit = null)
+        public async Task<IEnumerable<EmailSendTask>> GetByStatus(EmailSendStatus status, int? limit = null)
         {
-            var query = DbQuery
-                .CustomSearch(x => x.And(
-                    x.Eq(z => z.State, true),
-                    x.Eq(z => z.Status, status)))
-                .Ascending(x => x.CreatedTime);
+            var query = _builder
+                .Eq(x => x.State, MREntityState.Active)
+                .Eq(x => x.Status, status)
+                .Sorting(x => x.CreateTime, false);
 
-            if (limit.HasValue && limit > 0)
-                query.Limit = limit.Value;
+            if (limit.HasValue && limit.Value > 0)
+            {
+                query.Limit(limit.Value);
+            }
 
-            return await Get(query);
+            return await GetByQuery(query);
         }
 
         public async Task<UpdateResult> MultiplyUpdateStatus(IEnumerable<string> ids, EmailSendStatus newStatus)
         {
-            var query = DbQuery
-                .Eq(x => x.State, true)
-                .Contains(x => x.Id, ids)
-                .Update(x => x.Set(z => z.Status, newStatus));
+            if (ids == null || !ids.Any())
+            {
+                return UpdateResult.Unacknowledged.Instance;
+            }
 
-            return await Update(query);
+            var query = _builder
+                .Eq(x => x.State, MREntityState.Active)
+                .In(x => x.Id, ids)
+                .UpdateSet(x => x.UpdateTime, DateTime.UtcNow)
+                .UpdateSet(x => x.Status, newStatus);
+
+            await UpdateManyByQuery(query);
+            return new UpdateResult.Acknowledged(ids.Count(), ids.Count(), "");
         }
 
         public async Task<UpdateResult> UpdateStatus(string id, EmailSendStatus newStatus, string failMessage = null)
         {
-            var query = DbQuery
-                .Eq(x => x.State, true)
+            var query = _builder
+                .Eq(x => x.State, MREntityState.Active)
                 .Eq(x => x.Id, id)
-                .Update(x => x.Set(z => z.Status, newStatus).Set(z => z.FailMessage, failMessage));
+                .UpdateSet(x => x.UpdateTime, DateTime.UtcNow)
+                .UpdateSet(x => x.Status, newStatus)
+                .UpdateSet(x => x.FailMessage, failMessage);
 
-            return await Update(query);
+            await UpdateByQuery(query);
+            return new UpdateResult.Acknowledged(1, 1, id);
         }
     }
 }

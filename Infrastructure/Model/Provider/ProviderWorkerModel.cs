@@ -29,7 +29,7 @@ namespace Infrastructure.Model.Provider
 
             Status = user.Status;
 
-            AvatarUrl = user.Avatar?.Src;
+            AvatarUrl = user.Image?.Url;
 
             return this;
         }

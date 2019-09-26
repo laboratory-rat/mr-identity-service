@@ -13,6 +13,7 @@ using Manager.Options;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
+using MRApiCommon.Infrastructure.Enum;
 using MRIdentityClient.Exception.Common;
 using MRIdentityClient.Exception.MRSystem;
 using MRIdentityClient.Exception.Request;
@@ -67,7 +68,7 @@ namespace Manager
             if (model.Translations == null || !model.Translations.Any())
                 throw new ModelDamagedException(nameof(model.Translations), "can not be null or empty");
 
-            var isSlugExists = (await _providerRepository.Count(x => x.Slug == model.Slug && x.State)) > 0;
+            var isSlugExists = (await _providerRepository.Count(x => x.Slug == model.Slug && x.State == MREntityState.Active)) > 0;
             if (isSlugExists)
                 throw new MRSystemException($"Provider with slug {model.Slug} already exists");
 
@@ -96,8 +97,8 @@ namespace Manager
                         ProviderWorkerRole.OWNER,
                         ProviderWorkerRole.USER_MANAGER
                     },
-                    UserEmail = _currentUserEmail,
-                    UserId = _currentUserId
+                    UserEmail = _userEmail,
+                    UserId = _userId
                 }
             };
 
@@ -147,7 +148,7 @@ namespace Manager
             if (string.IsNullOrWhiteSpace(model.Name))
                 throw new ModelDamagedException(nameof(model.Name), "is required");
 
-            var entity = await _providerRepository.GetFirst(providerId);
+            var entity = await _providerRepository.Get(providerId);
             if (entity == null)
                 throw new EntityNotFoundException(providerId, typeof(Provider));
 
@@ -181,7 +182,7 @@ namespace Manager
         /// <returns></returns>
         public async Task<ProviderDisplayModel> GetToDisplay(string slug, string languageCode)
         {
-            var entity = await _providerRepository.GetFirst(x => x.Slug == slug && x.State);
+            var entity = await _providerRepository.GetFirst(x => x.Slug == slug && x.State == MREntityState.Active);
             if (entity == null)
                 throw new EntityNotFoundException(slug, typeof(Provider));
 
@@ -223,7 +224,8 @@ namespace Manager
 
             if (string.IsNullOrWhiteSpace(languageCode)) languageCode = DEFAULT_LANGUAGE_CODE;
 
-            var list = (await _providerRepository.Get(x => x.State == true, skip, limit, x => x.CreatedTime, true))?.ToList() ?? new List<Provider>();
+
+            var list = (await _providerRepository.GetSorted(x => x.State == MREntityState.Active, x => x.CreateTime, true, skip, limit))?.ToList() ?? new List<Provider>();
             var total = await _providerRepository.Count();
 
             var response = new ApiListResponse<ProviderShortDisplayModel>(skip, limit)
@@ -235,8 +237,8 @@ namespace Manager
             var categoriesToDownload = list.Select(x => x.Category.CategoryId);
             var tagsToDownload = list.Where(x => x.Tags != null).SelectMany(x => x.Tags).GroupBy(x => x.TagId).Select(x => x.Key);
 
-            var allCategories = await _providerCategoryRepository.GetAll(categoriesToDownload);
-            var allTags = await _providerTagRepository.GetAll(tagsToDownload);
+            var allCategories = await _providerCategoryRepository.Get(categoriesToDownload);
+            var allTags = await _providerTagRepository.Get(tagsToDownload);
 
             foreach (var provider in list)
             {
@@ -321,7 +323,7 @@ namespace Manager
             if (!await _providerRepository.ExistsWithOwner(id, user.Id))
                 throw new AccessDeniedException(id, typeof(Provider));
 
-            var entity = await _providerRepository.GetFirst(id);
+            var entity = await _providerRepository.Get(id);
             if (entity.Fingerprints == null || !entity.Fingerprints.Any())
                 return new ApiListResponse<ProviderFingerprintDisplayModel>
                 {
@@ -351,7 +353,7 @@ namespace Manager
             if (string.IsNullOrWhiteSpace(slug))
                 throw new BadRequestException();
 
-            var entity = await _providerRepository.GetFirst(x => x.Slug == slug.ToLower() && x.State);
+            var entity = await _providerRepository.GetFirst(x => x.Slug == slug.ToLower() && x.State == MREntityState.Active);
             if (entity == null)
                 throw new EntityNotFoundException(slug, typeof(Provider));
 
@@ -393,7 +395,7 @@ namespace Manager
             if (model.Translations.Count(x => x.IsDefault) != 1)
                 throw new ModelDamagedException(nameof(model.Translations), "default is required");
 
-            var entity = await _providerRepository.GetFirst(model.Id);
+            var entity = await _providerRepository.Get(model.Id);
             if (entity == null)
                 throw new EntityNotFoundException(model.Id, typeof(Provider));
 
@@ -467,7 +469,7 @@ namespace Manager
                 throw new ModelDamagedException(nameof(id), "can not be empty");
 
             var user = await GetCurrentUser();
-            var entity = await _providerRepository.GetFirst(id);
+            var entity = await _providerRepository.Get(id);
 
             if (entity == null)
                 throw new EntityNotFoundException(id, typeof(Provider));
@@ -475,11 +477,7 @@ namespace Manager
             if (entity.Owner.Id != user.Id)
                 throw new AccessDeniedException(id, typeof(Provider));
 
-            var result = await _providerRepository.RemoveSoft(id);
-
-            if (result.ModifiedCount != 1)
-                throw new MRSystemException();
-
+            await _providerRepository.DeleteSoft(id);
         }
 
         /// <summary>
@@ -496,7 +494,7 @@ namespace Manager
             if (!(await _providerRepository.ExistsWithOwner(id, user.Id)))
                 throw new EntityNotFoundException(id, typeof(Provider));
 
-            var entity = await _providerRepository.GetFirst(id);
+            var entity = await _providerRepository.Get(id);
             if (entity.Fingerprints == null || !entity.Fingerprints.Any(x => x.Name.ToLower() == name.ToLower()))
                 throw new EntityNotFoundException("name", typeof(ProviderFingerprint));
 

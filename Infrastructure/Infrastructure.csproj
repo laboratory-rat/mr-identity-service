@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
@@ -6,7 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MRDbMongoIdentity" Version="1.0.7" />
+    <PackageReference Include="MRApiCommon" Version="1.0.6" />
+    <PackageReference Include="MRIdentityClient" Version="1.0.0" />
   </ItemGroup>
 
   <ItemGroup>

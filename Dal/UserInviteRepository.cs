@@ -1,22 +1,24 @@
 ﻿using Infrastructure.Entities;
-using MongoDB.Driver;
-using MRDb.Infrastructure.Interface;
-using MRDb.Repository;
+using Microsoft.Extensions.Options;
+using MRApiCommon.Infrastructure.Database;
+using MRApiCommon.Infrastructure.Enum;
+using MRApiCommon.Infrastructure.Interface;
+using MRApiCommon.Options;
 using System.Threading.Tasks;
 
 namespace Dal
 {
-    public class UserInviteRepository : BaseRepository<UserInvite>, IRepository<UserInvite>
+    public class UserInviteRepository : MRMongoRepository<UserInvite>, IMRRepository<UserInvite>
     {
-        public UserInviteRepository(IMongoDatabase mongoDatabase) : base(mongoDatabase) { }
+        public UserInviteRepository(IOptions<MRDbOptions> options) : base(options) { }
 
         public async Task<UserInvite> GetByCode(string code)
         {
-            var q = DbQuery
-                .Eq(x => x.State, true)
+            var query = _builder
+                .Eq(x => x.State, MREntityState.Active)
                 .Eq(x => x.Code, code);
 
-            return await _collection.Find(q.FilterDefinition).FirstOrDefaultAsync();
+            return await GetByQueryFirst(query);
         }
     }
 }

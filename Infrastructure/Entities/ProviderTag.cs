@@ -1,12 +1,10 @@
-﻿using MRDb.Domain;
-using MRDb.Infrastructure.Interface;
-using System;
+﻿using MRApiCommon.Infrastructure.Database;
+using MRApiCommon.Infrastructure.Interface;
 using System.Collections.Generic;
-using System.Text;
 
 namespace Infrastructure.Entities
 {
-    public class ProviderTag : Entity, IEntity
+    public class ProviderTag : MREntity, IMREntity
     {
         public string Key { get; set; }
         public List<ProviderTagTranslation> Translations { get; set; }

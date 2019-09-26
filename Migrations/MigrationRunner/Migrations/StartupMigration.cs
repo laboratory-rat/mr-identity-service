@@ -6,7 +6,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using MigrationRunner.Infrastructure.Attr;
 using MigrationRunner.Infrastructure.Interface;
-using MRDbIdentity.Domain;
+using MRApiCommon.Infrastructure.Enum;
+using MRApiCommon.Infrastructure.IdentityExtensions.Components;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -25,17 +26,17 @@ namespace MigrationRunner.Migrations
             await Seed(_serviceProvider);
         }
 
-        private static List<Role> Roles = new List<Role>
+        private static List<MRUserRole> Roles = new List<MRUserRole>
         {
-            new Role
+            new MRUserRole
             {
                 Name = "ADMIN",
             },
-            new Role
+            new MRUserRole
             {
                 Name = "USER",
             },
-            new Role
+            new MRUserRole
             {
                 Name = "MANAGER"
             }
@@ -52,19 +53,18 @@ namespace MigrationRunner.Migrations
                     LastName = "Tymofieiev",
                     Email = "oleg.timofeev20@gmail.com",
                     UserName = "somemyname",
-                    Tels = new List<UserTel>
+                    Tels = new List<MRUserTel>
                     {
-                        new UserTel
+                        new MRUserTel
                         {
-                            CreatedTime = DateTime.UtcNow,
                             Name = "Main",
-                            Number = "+380508837161"
+                            Tel = "+380508837161"
                         }
                     },
-                    State = true,
-                    Avatar = new UserAvatar
+                    State = MREntityState.Active,
+                    Image = new MRUserImage
                     {
-                        Src = "https://www.w3schools.com/howto/img_avatar.png"
+                        Url = "https://www.w3schools.com/howto/img_avatar.png"
                     }
                 }
             }
@@ -79,7 +79,7 @@ namespace MigrationRunner.Migrations
                 Status = EmailSendStatus.New,
                 Subject = "Identity startup",
                 ToEmail = "oleg.timofeev20@gmail.com",
-                State = true
+                State = MREntityState.Active
             }
         };
 
@@ -103,7 +103,7 @@ namespace MigrationRunner.Migrations
         private async Task SeedUsers(IServiceProvider service)
         {
             var userRepository = service.GetRequiredService<IUserStore<AppUser>>();
-            var roleRepository = service.GetRequiredService<IRoleStore<Role>>();
+            var roleRepository = service.GetRequiredService<IRoleStore<MRUserRole>>();
             var userManager = service.GetRequiredService<AppUserManager>();
 
             Console.WriteLine($"Start seed users");
@@ -113,7 +113,7 @@ namespace MigrationRunner.Migrations
                 var roleId = await roleRepository.GetRoleIdAsync(role, new System.Threading.CancellationToken());
                 if (!string.IsNullOrWhiteSpace(roleId))
                 {
-                    role.Id = roleId;
+                    role.Name = roleId;
                 }
                 else
                 {
@@ -172,7 +172,7 @@ namespace MigrationRunner.Migrations
             var languagesToUpdate = new List<Language>();
 
             // all languages
-            var allLanguages = await languageRepository.Get(new MRDb.Tools.DbQuery<Language>().Where(x => x.Id != null));
+            var allLanguages = await languageRepository.Get(x => true);
 
             if (allLanguages != null && allLanguages.Any())
             {
@@ -209,7 +209,10 @@ namespace MigrationRunner.Migrations
             // upload changes to database
             if (languagesToDelete.Any())
             {
-                await languageRepository.Remove(languagesToDelete.Select(x => x.Id));
+                foreach(var lang in languagesToDelete)
+                {
+                    await languageRepository.DeleteHard(lang);
+                }
             }
 
             if (languagesToUpdate.Any())
